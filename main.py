@@ -1,0 +1,5 @@
+from app.services.criar_declaracao import criar_declaracao
+from app.services.fechar_processos import fechar_processos
+from app.services.enviar_faltas_rosana import criar_planilha_nao_encontrados
+
+criar_planilha_nao_encontrados()
