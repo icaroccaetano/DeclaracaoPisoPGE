@@ -17,7 +17,7 @@ load_dotenv()
 def buscar_rh ():
     conn = pyodbc.connect(os.getenv('STRING_ACCES'))
     cursor = conn.cursor()
-    rows = cursor.execute(f"SELECT cpf, vinculo FROM ResultadoBuscarVinculos WHERE data_inicio < {datetime.strftime("01/01/2017","%d/%m/%Y")}").fetchall()
+    rows = cursor.execute(f"SELECT cpf FROM BuscarVinculos WHERE ok = 'modulacao ok'").fetchall()
 
     browser = webdriver.Chrome()
     browser.get("https://aplicacoes.expresso.go.gov.br/")
@@ -44,12 +44,14 @@ def buscar_rh ():
         time.sleep (.3)
         if alert_is_present(browser):
             browser.switch_to.alert.accept()
-            cursor.execute(f"""UPDATE 
-                        BuscarVinculos 
-                    SET 
-                        ok = 'ok - nada'
-                    WHERE 
-                        cpf = '{dado.cpf}'""")
+            cursor.execute(f"""
+                UPDATE 
+                    BuscarVinculos 
+                SET 
+                    ok = 'ok - nada'
+                WHERE 
+                    cpf = '{dado.cpf}'
+            """)
             conn.commit()
             continue
         select_vinculo = Select(wait.until(EC.presence_of_element_located((By.NAME, "codVinculo"))))
@@ -57,18 +59,23 @@ def buscar_rh ():
             vinculo = option.get_attribute("value")
             if vinculo == '':
                 continue
-            data_inicio = datetime.strptime(option.text[:10], "%d/%m/%Y")
-            cursor.execute(f"""INSERT INTO 
-                            ResultadoBuscarVinculos (cpf, vinculo, data_inicio) 
-                        VALUES 
-                            ('{dado.cpf}', '{vinculo}', #{datetime.strftime(data_inicio,"%d/%m/%Y")}#)
-                        """)
-        cursor.execute(f"""UPDATE 
-                        BuscarVinculos 
-                    SET 
-                        ok = 'ok'
-                    WHERE 
-                        cpf = '{dado.cpf}'""")
+            data_inicio = datetime.strptime(option.text[:10], "%d/%m/%Y").strftime("%Y-%m-%d")
+
+            # Inserção formatada corretamente
+            cursor.execute(f"""
+                INSERT INTO 
+                    ResultadoBuscarVinculos (cpf, vinculo, data_inicio) 
+                VALUES 
+                    ('{dado.cpf}', '{vinculo}', '{data_inicio}')
+                """)
+        cursor.execute(f"""
+            UPDATE 
+                BuscarVinculos 
+            SET 
+                ok = 'ok'
+            WHERE 
+                cpf = '{dado.cpf}'
+            """)
         conn.commit()
             
     browser.quit()

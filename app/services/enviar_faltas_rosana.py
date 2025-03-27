@@ -5,15 +5,15 @@ import pandas as pd
 def criar_planilha_nao_encontrados():
     conn = pyodbc.connect(os.getenv('STRING_ACCES'))
     sql = ("""
-                SELECT 
-                    DISTINCT cpf, 
-                    nome,
-                    ok as status
-                FROM 
-                    BuscarVinculos 
-                WHERE 
-                    rodou = FALSE
-                """)
+        SELECT 
+            DISTINCT cpf, 
+            nome,
+            ok as status
+        FROM 
+            BuscarVinculos 
+        WHERE 
+            rodou = FALSE
+        """)
     df_relatorio = pd.read_sql(sql, conn)
     #Criando a planilha
     try:

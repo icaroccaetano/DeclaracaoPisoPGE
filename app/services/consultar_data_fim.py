@@ -16,12 +16,12 @@ date_format = f"%d/%m/%Y"
 
 load_dotenv()
 
-def buscar_rh ():
-    connection_string = r"DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=C:\\Users\\01780742177\\Documents\\Database1.accdb;"
+def buscar_rh_fim ():
+    connection_string = r"DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=C:\\Users\\01780742177\\Documents\\BaseDeclaracaoPisoPGE.accdb;"
     conn = pyodbc.connect(connection_string)
     cursor = conn.cursor()
     data_analise = datetime.strptime("01/01/2017","%d/%m/%Y")
-    rows = cursor.execute(f"SELECT cpf, vinculo FROM ResultadoBuscarVinculos WHERE data_inicio < #{datetime.strftime(data_analise,'%d/%m/%Y')}# AND data_fim IS NULL").fetchall()
+    rows = cursor.execute(f"SELECT cpf, vinculo FROM ResultadoBuscarVinculos WHERE data_fim IS NULL").fetchall()
 
     browser = webdriver.Chrome()
     browser.get("https://aplicacoes.expresso.go.gov.br/")
@@ -63,16 +63,17 @@ def buscar_rh ():
                         mm = browser.find_element(By.NAME, "txtDataExclusaoMes").get_attribute("value")
                         yyyy = browser.find_element(By.NAME, "txtDataExclusaoAno").get_attribute("value")
                         data_fim = datetime.strptime(f"{dd}/{mm}/{yyyy}", "%d/%m/%Y")
-                        browser.find_element(By.NAME, "botaoOK").click()
+                        browser.execute_script("arguments[0].click();", browser.find_elements(By.XPATH, "//input[@value='Cancelar']")[1])
+
                     else:
-                        data_fim = datetime.strptime("31/12/2016", "%d/%m/%Y")
-                    cursor.execute(
-                        f"""UPDATE 
-                                ResultadoBuscarVinculos 
-                            SET
-                                data_fim = #{datetime.strftime(data_fim,"%d/%m/%Y")}#
-                            WHERE
-                                vinculo = '{dado.vinculo}'
+                        data_fim = datetime.now()
+                    cursor.execute(f"""
+                        UPDATE 
+                            ResultadoBuscarVinculos 
+                        SET
+                            data_fim = #{datetime.strftime(data_fim,"%d/%m/%Y")}#
+                        WHERE
+                            vinculo = '{dado.vinculo}'
                         """)
                     conn.commit()
                     flag_encontrou = True

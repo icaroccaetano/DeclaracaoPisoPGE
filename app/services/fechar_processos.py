@@ -12,17 +12,17 @@ def fechar_processos ():
     conn = pyodbc.connect(os.getenv('STRING_ACCES'))
     cursor = conn.cursor()
     ListaCriar = cursor.execute("""
-                                SELECT 
-                                    cpf, 
-                                    nome,
-                                    sei
-                                FROM 
-                                    BuscarVinculos 
-                                WHERE 
-                                    ok = 'rodar'
-                                AND
-                                    rodou = TRUE
-                                """).fetchall()
+        SELECT 
+            cpf, 
+            nome,
+            sei
+        FROM 
+            BuscarVinculos 
+        WHERE 
+            ok = 'rodar'
+        AND
+            rodou = TRUE
+        """).fetchall()
     browser = iniciar_chrome() 
     browser.get('https://sei.go.gov.br')
     send_keys(browser, (By.ID, 'txtUsuario'),(os.getenv('ACESSO_SEI')))

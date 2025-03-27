@@ -25,59 +25,69 @@ def criar_declaracao ():
     conn = pyodbc.connect(os.getenv('STRING_ACCES'))
     cursor = conn.cursor()
     ListaCriar = cursor.execute("""
-                                SELECT 
-                                    cpf, 
-                                    nome,
-                                    sei
-                                FROM 
-                                    BuscarVinculos 
-                                WHERE 
-                                    ok = 'rodar'
-                                AND
-                                    rodou = FALSE
-                                """).fetchall()
+        SELECT 
+            cpf, 
+            nome,
+            sei
+        FROM 
+            BuscarVinculos 
+        WHERE 
+            ok = 'ok - 2022'
+        AND
+            rodou = FALSE
+        """).fetchall()
     for servidor in ListaCriar:
-        sql_server_engine = get_sql_server_engine()
-        DadosServidor = pd.read_sql(f"""
-                        SELECT 
-                            * 
-                        FROM 
-                            SGDP_SISTEMA_DE_DECLARACOES_LEVANTAMENTO_PGE_EQUIPARACAO_DE_PISO
-                        WHERE
-                            cpf = '{servidor.cpf}'
-                         """, sql_server_engine)
+        # sql_server_engine = get_sql_server_engine()
+        # DadosServidor = pd.read_sql(f"""
+        #     SELECT 
+        #         * 
+        #     FROM 
+        #         SGDP_SISTEMA_DE_DECLARACOES_LEVANTAMENTO_PGE_EQUIPARACAO_DE_PISO
+        #     WHERE
+        #         cpf = '{servidor.cpf}'
+        #         """, sql_server_engine)
+        DadosServidor = cursor.execute(f"""
+            SELECT 
+                * 
+            FROM 
+                TabelaBuscaModulacaoManual
+            WHERE
+                cpf = '{servidor.cpf}'
+                """).fetchall()
         nome_servidor = servidor.nome
         cpf = servidor.cpf
-        if DadosServidor.empty:
+        if not DadosServidor:
             cursor.execute(f"""
-                    UPDATE 
-                        BuscarVinculos 
-                    SET 
-                        ok = 'servidor nao encontrado no levantamento'
-                    WHERE 
-                        cpf = '{servidor.cpf}'
-                    AND
-                        sei = '{servidor.sei}'
-                    """)
+                UPDATE 
+                    BuscarVinculos 
+                SET 
+                    ok = 'servidor nao encontrado no levantamento'
+                WHERE 
+                    cpf = '{servidor.cpf}'
+                AND
+                    sei = '{servidor.sei}'
+                """)
             conn.commit()
             continue
-        funcao_servidor = DadosServidor["cod_funcao"].iloc[0]    
-        descricao_funcao = DadosServidor["funcao"].iloc[0]
+        funcao_servidor = DadosServidor[0][1]   
+        descricao_funcao = DadosServidor[0][2]
         # Criar string dos períodos
         ListaPeriodos = cursor.execute(f"""
-                                SELECT 
-                                    data_inicio,
-                                    data_fim
-                                FROM 
-                                    ResultadoBuscarVinculos 
-                                WHERE 
-                                    cpf = '{cpf}'
-                                """).fetchall()
+            SELECT 
+                data_inicio,
+                data_fim
+            FROM 
+                ResultadoBuscarVinculos 
+            WHERE 
+                cpf = '{cpf}'
+            """).fetchall()
         periodos_lista = []
         for dados in ListaPeriodos:
-            data_inicio = datetime.strftime(dados.data_inicio, "%m/%Y")
-            data_fim = datetime.strftime(dados.data_fim, "%m/%Y")
-            periodos_lista.append(f"{data_inicio} a {data_fim}")
+            # se a data_inicio for menor que 2016 - considerar
+            if dados.data_inicio > datetime.strptime("01/01/2017", "%d/%m/%Y"):
+                data_inicio = datetime.strftime(dados.data_inicio, "%m/%Y")
+                data_fim = datetime.strftime(dados.data_fim, "%m/%Y")
+                periodos_lista.append(f"{data_inicio} a {data_fim}")
         periodos = ", ".join(periodos_lista) + "."
         # Criacao do HTML
         html = ""  
@@ -106,12 +116,12 @@ def criar_declaracao ():
                 break
         browser.find_element(By.ID, 'Acessar').click() 
         browser.execute_script("arguments[0].click()", browser.find_element(By.ID, 'lnkInfraUnidade'))
-        browser.execute_script("arguments[0].click()", browser.find_element(By.XPATH, "//*[text()='SEDUC/GEFOP-11159']"))
+        browser.execute_script("arguments[0].click()", browser.find_element(By.XPATH, "//*[text()='SEDUC/SGDP-15916']"))
         clear(browser,(By.ID, 'txtPesquisaRapida'))
         send_keys(browser, (By.ID, 'txtPesquisaRapida'), servidor.sei)
         browser.execute_script("document.getElementById('frmProtocoloPesquisaRapida').submit();")
         browser.switch_to.frame("ifrVisualizacao")
-        click(browser,(By.CSS_SELECTOR, "[title='Reabrir Processo']"))
+        #click(browser,(By.CSS_SELECTOR, "[title='Reabrir Processo']"))
         WebDriverWait(browser, 15).until(EC.presence_of_element_located((By.CSS_SELECTOR, "[title='Incluir Documento']")))
         click(browser,(By.CSS_SELECTOR, "[title='Incluir Documento']"))
         click(browser,(By.XPATH, "//*[text()='Declaração']"))
@@ -169,19 +179,17 @@ def criar_declaracao ():
         browser.execute_script("assinarSenha();")
 
         cursor.execute(f"""
-                    UPDATE 
-                        BuscarVinculos 
-                    SET 
-                        rodou = TRUE
-                    WHERE 
-                        cpf = '{servidor.cpf}'
-                    AND
-                        sei = '{servidor.sei}'
-                    """)
+            UPDATE 
+                BuscarVinculos 
+            SET 
+                rodou = TRUE
+            WHERE 
+                cpf = '{servidor.cpf}'
+            AND
+                sei = '{servidor.sei}'
+            """)
         conn.commit()
         browser.switch_to.default_content()
         browser.switch_to.frame("ifrVisualizacao")
         WebDriverWait(browser, 15).until(EC.presence_of_element_located((By.CSS_SELECTOR, "[title='Incluir Documento']")))
         browser.close()
-
-    
